@@ -1,0 +1,631 @@
+-- ==================== 1. ระบบหน้าต่างใส่คีย์ (Custom Key UI) ====================
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local CoreGui = game:GetService("CoreGui")
+
+local KeyGui = Instance.new("ScreenGui")
+KeyGui.Name = "NON_CustomKeySystem"
+KeyGui.Parent = CoreGui
+KeyGui.ResetOnSpawn = false
+
+local MainFrame = Instance.new("Frame")
+MainFrame.Parent = KeyGui
+MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+MainFrame.BorderSizePixel = 0
+MainFrame.Position = UDim2.new(0.5, -150, 0.5, -110)
+MainFrame.Size = UDim2.new(0, 300, 0, 220)
+MainFrame.Active = true
+MainFrame.Draggable = true
+
+local MainCorner = Instance.new("UICorner", MainFrame)
+MainCorner.CornerRadius = UDim.new(0, 8)
+
+-- หัวข้อ
+local Title = Instance.new("TextLabel")
+Title.Parent = MainFrame
+Title.BackgroundTransparency = 1
+Title.Position = UDim2.new(0, 0, 0, 12)
+Title.Size = UDim2.new(1, 0, 0, 30)
+Title.Font = Enum.Font.SourceSansBold
+Title.Text = "N.O.N Hub | Key System"
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.TextSize = 18
+
+-- กล่องใส่คีย์
+local KeyBox = Instance.new("TextBox")
+KeyBox.Parent = MainFrame
+KeyBox.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+KeyBox.Position = UDim2.new(0.1, 0, 0.28, 0)
+KeyBox.Size = UDim2.new(0.8, 0, 0, 38)
+KeyBox.Font = Enum.Font.SourceSans
+KeyBox.PlaceholderText = "ใส่คีย์"
+KeyBox.Text = ""
+KeyBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+KeyBox.TextSize = 14
+KeyBox.ClearTextOnFocus = false
+
+local BoxCorner = Instance.new("UICorner", KeyBox)
+BoxCorner.CornerRadius = UDim.new(0, 6)
+
+-- ปุ่มยืนยัน
+local ConfirmBtn = Instance.new("TextButton")
+ConfirmBtn.Parent = MainFrame
+ConfirmBtn.BackgroundColor3 = Color3.fromRGB(180, 0, 0)
+ConfirmBtn.Position = UDim2.new(0.1, 0, 0.55, 0)
+ConfirmBtn.Size = UDim2.new(0.8, 0, 0, 38)
+ConfirmBtn.Font = Enum.Font.SourceSansBold
+ConfirmBtn.Text = "ยืนยัน"
+ConfirmBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+ConfirmBtn.TextSize = 15
+
+local ConfirmCorner = Instance.new("UICorner", ConfirmBtn)
+ConfirmCorner.CornerRadius = UDim.new(0, 6)
+
+-- ปุ่มรับคีย์
+local GetKeyBtn = Instance.new("TextButton")
+GetKeyBtn.Parent = MainFrame
+GetKeyBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+GetKeyBtn.Position = UDim2.new(0.1, 0, 0.77, 0)
+GetKeyBtn.Size = UDim2.new(0.8, 0, 0, 32)
+GetKeyBtn.Font = Enum.Font.SourceSans
+GetKeyBtn.Text = "รับคีย์ (คลิกเพื่อคัดลอกลิงก์)"
+GetKeyBtn.TextColor3 = Color3.fromRGB(0, 170, 255)
+GetKeyBtn.TextSize = 13
+
+local GetKeyCorner = Instance.new("UICorner", GetKeyBtn)
+GetKeyCorner.CornerRadius = UDim.new(0, 6)
+
+local keyLink = "https://playprokey-4yewwqtx.manus.space"
+
+GetKeyBtn.MouseButton1Click:Connect(function()
+    if setclipboard then
+        setclipboard(keyLink)
+        GetKeyBtn.Text = "คัดลอกลิงก์สำเร็จ!"
+        task.wait(1.5)
+        GetKeyBtn.Text = "รับคีย์ (คลิกเพื่อคัดลอกลิงก์)"
+    else
+        GetKeyBtn.Text = keyLink
+    end
+end)
+
+ConfirmBtn.MouseButton1Click:Connect(function()
+    local inputKey = KeyBox.Text
+    
+    if not string.match(inputKey, "^NON%-B%d%d%d%d%d%d%d$") then
+        ConfirmBtn.Text = "คีย์ผิดรูปแบบ (NON-B + เลข 7 หลัก)"
+        ConfirmBtn.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
+        task.wait(1.5)
+        ConfirmBtn.Text = "ยืนยัน"
+        ConfirmBtn.BackgroundColor3 = Color3.fromRGB(180, 0, 0)
+        return
+    end
+
+    ConfirmBtn.Text = "กำลังตรวจสอบกับระบบ..."
+    ConfirmBtn.BackgroundColor3 = Color3.fromRGB(200, 150, 0)
+
+    local HttpService = game:GetService("HttpService")
+    local success, response = pcall(function()
+        return request({
+            Url = keyLink .. "/api/keys/verify",
+            Method = "POST",
+            Headers = {
+                ["Content-Type"] = "application/json"
+            },
+            Body = HttpService:JSONEncode({
+                key = inputKey
+            })
+        })
+    end)
+
+    if success and response and response.StatusCode == 200 then
+        local data = HttpService:JSONDecode(response.Body)
+        
+        if data.status == "valid" then
+            ConfirmBtn.Text = "คีย์ถูกต้อง กำลังเข้าสู่ระบบ..."
+            ConfirmBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
+            task.wait(1)
+            KeyGui:Destroy()
+            
+            -- ==================== 2. โหลด N.O.N Hub หลัก (WindUI) ====================
+            local WindUI = loadstring(game:HttpGet("https://tree-hub.vercel.app/api/UI/WindUI"))()
+            
+            local Window = WindUI:CreateWindow({
+                Title = "N.O.N Hub | MM2",
+                Icon = "swords",
+                Author = "N.O.N",
+                Folder = "NON_Hub_Settings",
+                Size = UDim2.fromOffset(580, 460),
+                Transparent = true,
+                Theme = "Dark",
+                SideBarWidth = 200,
+                HasOutline = true
+            })
+
+            local CombatTab = Window:Tab({ Title = "Combat / Aimbot", Icon = "crosshair" })
+            local VisualsTab = Window:Tab({ Title = "Visuals / ESP", Icon = "eye" })
+            local TeleportTab = Window:Tab({ Title = "Teleport & Bring", Icon = "move" })
+            local PlayerTab = Window:Tab({ Title = "Player & Misc", Icon = "user" })
+
+            local Camera = workspace.CurrentCamera
+            local RunService = game:GetService("RunService")
+            local VirtualUser = game:GetService("VirtualUser")
+
+            -- ตัวแปรตั้งค่าระบบ
+            local AimbotEnabled = false
+            local SilentAimEnabled = false
+            local SelectedTargetRole = "ฆาตกร"
+            local AimbotSensitivity = 25
+            local WallCheckEnabled = false
+            
+            local HighlightEspEnabled = false
+            local TextEspEnabled = false
+            
+            local AutoGunTp = false
+            local BringTargetRole = "ทั้งหมด"
+            local LoopBringEnabled = false
+
+            local SpeedHackEnabled = false
+            local SpeedValue = 20
+            local AntiAfkEnabled = true
+
+            -- ฟังก์ชันระบุบทบาทผู้เล่น
+            local function GetPlayerRole(player)
+                local char = player.Character
+                local backpack = player.Backpack
+                if (char and char:FindFirstChild("Knife")) or (backpack and backpack:FindFirstChild("Knife")) then
+                    return "ฆาตกร"
+                elseif (char and char:FindFirstChild("Gun")) or (backpack and backpack:FindFirstChild("Gun")) then
+                    return "ตำรวจ"
+                else
+                    return "คนปกติ"
+                end
+            end
+
+            -- ฟังก์ชันตรวจสอบการมองเห็น (Wallcheck)
+            local function IsVisible(targetPart)
+                if not WallCheckEnabled then return true end
+                local raycastParams = RaycastParams.new()
+                raycastParams.FilterType = Enum.RaycastFilterType.Exclude
+                raycastParams.FilterDescendantsInstances = {LocalPlayer.Character, Camera}
+                raycastParams.IgnoreWater = true
+                
+                local origin = Camera.CFrame.Position
+                local direction = targetPart.Position - origin
+                local result = workspace:Raycast(origin, direction, raycastParams)
+                
+                if result then
+                    local hitPart = result.Instance
+                    if hitPart:IsDescendantOf(targetPart.Parent) then return true end
+                    return false
+                end
+                return true
+            end
+
+            -- ฟังก์ชันหาผู้เล่นใกล้ที่สุดสำหรับ Silent Aim / Aimbot
+            local function GetClosestTarget()
+                local targetHead = nil
+                local shortestDistance = math.huge
+                for _, player in pairs(Players:GetPlayers()) do
+                    if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Head") then
+                        local role = GetPlayerRole(player)
+                        if SelectedTargetRole == "ทั้งหมด" or role == SelectedTargetRole then
+                            local head = player.Character.Head
+                            if IsVisible(head) then
+                                local _, onScreen = Camera:WorldToViewportPoint(head.Position)
+                                if onScreen then
+                                    local screenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+                                    local headPos = Camera:WorldToViewportPoint(head.Position)
+                                    local distance = (Vector2.new(headPos.X, headPos.Y) - screenCenter).Magnitude
+                                    if distance < shortestDistance then
+                                        shortestDistance = distance
+                                        targetHead = head
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end
+                return targetHead
+            end
+
+            -- ฟังก์ชันค้นหาปืนตก
+            local function FindDroppedGun()
+                for _, obj in pairs(workspace:GetChildren()) do
+                    if obj.Name == "Gun" or obj.Name == "GunDrop" then
+                        if obj:IsA("Tool") and obj:FindFirstChild("Handle") then
+                            return obj.Handle
+                        elseif obj:IsA("Model") and obj:FindFirstChild("Handle") then
+                            return obj.Handle
+                        end
+                    end
+                end
+                for _, obj in pairs(workspace:GetDescendants()) do
+                    if obj.Name == "Gun" or obj.Name == "GunDrop" then
+                        if obj:IsA("Tool") and obj:FindFirstChild("Handle") then
+                            return obj.Handle
+                        elseif obj:IsA("Model") and obj:FindFirstChild("Handle") then
+                            return obj.Handle
+                        end
+                    end
+                end
+                return nil
+            end
+
+            -- ระบบ Anti-AFK
+            LocalPlayer.Idled:Connect(function()
+                if AntiAfkEnabled then
+                    VirtualUser:CaptureController()
+                    VirtualUser:ClickButton2(Vector2.new(0, 0))
+                end
+            end)
+
+            -- ระบบ Silent Aim (Hooking Metamethod)
+            local rawNamecall
+            rawNamecall = hookmetamethod(game, "__namecall", function(self, ...)
+                local method = getnamecallmethod()
+                local args = {...}
+
+                if SilentAimEnabled and not checkcaller() then
+                    if method == "Raycast" or method == "FindPartOnRayWithIgnoreList" or method == "FindPartOnRay" then
+                        local target = GetClosestTarget()
+                        if target then
+                            if method == "Raycast" and args[1] and args[2] then
+                                args[2] = (target.Position - args[1]).Unit * 1000
+                                return rawNamecall(self, unpack(args))
+                            end
+                        end
+                    end
+                end
+                return rawNamecall(self, ...)
+            end)
+
+            -- Floating Buttons
+            local FloatingGui = Instance.new("ScreenGui")
+            FloatingGui.Name = "NON_FloatingGui"
+            FloatingGui.Parent = CoreGui
+            FloatingGui.ResetOnSpawn = false
+
+            local FloatFireBtn = Instance.new("TextButton")
+            FloatFireBtn.Name = "FloatFireBtn"
+            FloatFireBtn.Parent = FloatingGui
+            FloatFireBtn.BackgroundColor3 = Color3.fromRGB(180, 0, 0)
+            FloatFireBtn.Position = UDim2.new(0.85, 0, 0.55, 0)
+            FloatFireBtn.Size = UDim2.new(0, 65, 0, 65)
+            FloatFireBtn.Font = Enum.Font.SourceSansBold
+            FloatFireBtn.Text = "FIRE\n[OFF]"
+            FloatFireBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+            FloatFireBtn.TextSize = 13
+            FloatFireBtn.Draggable = true
+            Instance.new("UICorner", FloatFireBtn).CornerRadius = UDim.new(1, 0)
+
+            FloatFireBtn.MouseButton1Click:Connect(function()
+                AimbotEnabled = not AimbotEnabled
+                if AimbotEnabled then
+                    FloatFireBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
+                    FloatFireBtn.Text = "FIRE\n[ON]"
+                else
+                    FloatFireBtn.BackgroundColor3 = Color3.fromRGB(180, 0, 0)
+                    FloatFireBtn.Text = "FIRE\n[OFF]"
+                end
+            end)
+
+            local FloatTpBtn = Instance.new("TextButton")
+            FloatTpBtn.Name = "FloatTpBtn"
+            FloatTpBtn.Parent = FloatingGui
+            FloatTpBtn.BackgroundColor3 = Color3.fromRGB(0, 100, 200)
+            FloatTpBtn.Position = UDim2.new(0.85, 0, 0.73, 0)
+            FloatTpBtn.Size = UDim2.new(0, 65, 0, 65)
+            FloatTpBtn.Font = Enum.Font.SourceSansBold
+            FloatTpBtn.Text = "GET GUN\n[TP]"
+            FloatTpBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+            FloatTpBtn.TextSize = 12
+            FloatTpBtn.Draggable = true
+            Instance.new("UICorner", FloatTpBtn).CornerRadius = UDim.new(1, 0)
+
+            FloatTpBtn.MouseButton1Click:Connect(function()
+                local gunHandle = FindDroppedGun()
+                if gunHandle and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                    LocalPlayer.Character.HumanoidRootPart.CFrame = gunHandle.CFrame + Vector3.new(0, 3, 0)
+                end
+            end)
+
+            -- ================= Combat Tab =================
+            CombatTab:Dropdown({
+               Title = "เลือกเป้าหมาย Aimbot / Silent Aim",
+               Values = {"ฆาตกร", "ตำรวจ", "คนปกติ", "ทั้งหมด"},
+               Value = "ฆาตกร",
+               Callback = function(Value)
+                  SelectedTargetRole = Value
+               end
+            })
+
+            CombatTab:Toggle({
+               Title = "🎯 เปิด/ปิด Silent Aim",
+               Desc = "ขว้างมีด/ยิงปืนเลี้ยวโดนหัวอัตโนมัติ",
+               Value = false,
+               Callback = function(Value)
+                  SilentAimEnabled = Value
+               end
+            })
+
+            CombatTab:Toggle({
+               Title = "เปิด/ปิด Aimbot",
+               Desc = "หันกล้องล็อคเป้าหมายอัตโนมัติ",
+               Value = false,
+               Callback = function(Value)
+                  AimbotEnabled = Value
+                  if AimbotEnabled then
+                      FloatFireBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
+                      FloatFireBtn.Text = "FIRE\n[ON]"
+                  else
+                      FloatFireBtn.BackgroundColor3 = Color3.fromRGB(180, 0, 0)
+                      FloatFireBtn.Text = "FIRE\n[OFF]"
+                  end
+               end
+            })
+
+            CombatTab:Slider({
+               Title = "ความไว Aimbot (Sensitivity)",
+               Step = 1,
+               Min = 1,
+               Max = 100,
+               Value = 25,
+               Callback = function(Value)
+                  AimbotSensitivity = Value
+               end
+            })
+
+            CombatTab:Toggle({
+               Title = "เปิด/ปิด Wallcheck",
+               Desc = "ล็อกเฉพาะตัวที่มองเห็น / ไม่ทะลุกำแพง",
+               Value = false,
+               Callback = function(Value)
+                  WallCheckEnabled = Value
+               end
+            })
+
+            -- ================= Visuals Tab =================
+            VisualsTab:Toggle({
+               Title = "เปิด/ปิด Highlight ESP",
+               Desc = "แสดงเส้นขอบตัวละคร",
+               Value = false,
+               Callback = function(Value)
+                  HighlightEspEnabled = Value
+                  if not HighlightEspEnabled then
+                      for _, player in pairs(Players:GetPlayers()) do
+                          if player.Character and player.Character:FindFirstChild("NON_Highlight") then
+                              player.Character.NON_Highlight:Destroy()
+                          end
+                      end
+                  end
+               end
+            })
+
+            VisualsTab:Toggle({
+               Title = "เปิด/ปิด Text ESP",
+               Desc = "แสดงบทบาทบนหัวตัวละคร",
+               Value = false,
+               Callback = function(Value)
+                  TextEspEnabled = Value
+                  if not TextEspEnabled then
+                      for _, player in pairs(Players:GetPlayers()) do
+                          if player.Character and player.Character:FindFirstChild("Head") and player.Character.Head:FindFirstChild("NON_TextESP") then
+                              player.Character.Head.NON_TextESP:Destroy()
+                          end
+                      end
+                  end
+               end
+            })
+
+            -- ================= Teleport Tab =================
+            TeleportTab:Section({ Title = "🔫 โซนวาบหาปืน" })
+            
+            TeleportTab:Toggle({
+               Title = "ออโต้วาบไปหาปืน",
+               Desc = "วาบอัตโนมัติเมื่อปืนตก",
+               Value = false,
+               Callback = function(Value)
+                  AutoGunTp = Value
+               end
+            })
+
+            TeleportTab:Button({
+               Title = "⚡ [วาบไปหาปืนทันที]",
+               Desc = "คลิกครั้งเดียวเพื่อวาร์ป",
+               Callback = function()
+                  local gunHandle = FindDroppedGun()
+                  if gunHandle and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                      LocalPlayer.Character.HumanoidRootPart.CFrame = gunHandle.CFrame + Vector3.new(0, 3, 0)
+                  end
+               end
+            })
+
+            TeleportTab:Section({ Title = "👥 โซนดึงผู้เล่นมาด้านหน้า (Bring)" })
+            
+            TeleportTab:Dropdown({
+               Title = "เลือกกลุ่มที่จะดึงมาด้านหน้า",
+               Values = {"ฆาตกร", "ตำรวจ", "คนปกติ", "ทั้งหมด"},
+               Value = "ทั้งหมด",
+               Callback = function(Value)
+                  BringTargetRole = Value
+               end
+            })
+
+            TeleportTab:Toggle({
+               Title = "เปิด/ปิด ดึงผู้เล่นมากองด้านหน้า",
+               Desc = "ดึงมาไว้ตรงหน้าเพื่อให้ฟันโดนง่าย",
+               Value = false,
+               Callback = function(Value)
+                  LoopBringEnabled = Value
+               end
+            })
+
+            -- ================= Player & Misc Tab =================
+            PlayerTab:Section({ Title = "🏃‍♂️ ความเร็วผู้เล่น (Speed Hack)" })
+            
+            PlayerTab:Toggle({
+               Title = "เปิด/ปิด Speed Hack",
+               Value = false,
+               Callback = function(Value)
+                  SpeedHackEnabled = Value
+                  if not Value and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+                      LocalPlayer.Character.Humanoid.WalkSpeed = 16
+                  end
+               end
+            })
+
+            PlayerTab:Slider({
+               Title = "ปรับระดับความเร็ว (Speed)",
+               Step = 1,
+               Min = 16,
+               Max = 100,
+               Value = 20,
+               Callback = function(Value)
+                  SpeedValue = Value
+               end
+            })
+
+            PlayerTab:Section({ Title = "🛡️ ระบบความปลอดภัย" })
+            
+            PlayerTab:Toggle({
+               Title = "เปิด/ปิด Anti-AFK",
+               Desc = "ป้องกันเกมเตะออกเวลาไม่ได้ขยับตัว",
+               Value = true,
+               Callback = function(Value)
+                  AntiAfkEnabled = Value
+               end
+            })
+
+            -- ================= Main Render Loop =================
+            RunService.RenderStepped:Connect(function()
+                -- Speed Hack
+                if SpeedHackEnabled and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+                    LocalPlayer.Character.Humanoid.WalkSpeed = SpeedValue
+                end
+
+                -- Highlight ESP
+                if HighlightEspEnabled then
+                    for _, player in pairs(Players:GetPlayers()) do
+                        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                            local char = player.Character
+                            local role = GetPlayerRole(player)
+                            local highlight = char:FindFirstChild("NON_Highlight")
+                            if not highlight then
+                                highlight = Instance.new("Highlight")
+                                highlight.Name = "NON_Highlight"
+                                highlight.Parent = char
+                            end
+                            if role == "ฆาตกร" then
+                                highlight.FillColor = Color3.fromRGB(255, 0, 0)
+                            elseif role == "ตำรวจ" then
+                                highlight.FillColor = Color3.fromRGB(0, 0, 255)
+                            else
+                                highlight.FillColor = Color3.fromRGB(0, 255, 0)
+                            end
+                            highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+                        end
+                    end
+                end
+
+                -- Text ESP
+                if TextEspEnabled then
+                    for _, player in pairs(Players:GetPlayers()) do
+                        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Head") then
+                            local head = player.Character.Head
+                            local role = GetPlayerRole(player)
+                            local billboard = head:FindFirstChild("NON_TextESP")
+                            
+                            if not billboard then
+                                billboard = Instance.new("BillboardGui")
+                                billboard.Name = "NON_TextESP"
+                                billboard.Size = UDim2.new(0, 120, 0, 40)
+                                billboard.StudsOffset = Vector3.new(0, 2.5, 0)
+                                billboard.AlwaysOnTop = true
+                                billboard.Parent = head
+                                
+                                local textLabel = Instance.new("TextLabel")
+                                textLabel.Name = "RoleText"
+                                textLabel.Size = UDim2.new(1, 0, 1, 0)
+                                textLabel.BackgroundTransparency = 1
+                                textLabel.Font = Enum.Font.SourceSansBold
+                                textLabel.TextSize = 16
+                                textLabel.TextStrokeTransparency = 0.3
+                                textLabel.Parent = billboard
+                            end
+                            
+                            local textLabel = billboard:FindFirstChild("RoleText")
+                            if textLabel then
+                                textLabel.Text = "[" .. role .. "]"
+                                if role == "ฆาตกร" then
+                                    textLabel.TextColor3 = Color3.fromRGB(255, 0, 0)
+                                elseif role == "ตำรวจ" then
+                                    textLabel.TextColor3 = Color3.fromRGB(0, 100, 255)
+                                else
+                                    textLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
+                                end
+                            end
+                        end
+                    end
+                end
+
+                -- Aimbot Lock
+                if AimbotEnabled then
+                    local targetHead = GetClosestTarget()
+                    if targetHead then
+                        local targetCFrame = CFrame.new(Camera.CFrame.Position, targetHead.Position)
+                        local smoothness = math.clamp(AimbotSensitivity / 10, 0.1, 1)
+                        Camera.CFrame = Camera.CFrame:Lerp(targetCFrame, smoothness)
+                    end
+                end
+
+                -- Auto Teleport Gun
+                if AutoGunTp then
+                    local gunHandle = FindDroppedGun()
+                    if gunHandle and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                        LocalPlayer.Character.HumanoidRootPart.CFrame = gunHandle.CFrame + Vector3.new(0, 3, 0)
+                    end
+                end
+
+                -- Loop Bring Players
+                if LoopBringEnabled and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                    local myRoot = LocalPlayer.Character.HumanoidRootPart
+                    local bringOffset = myRoot.CFrame * CFrame.new(0, 0, -4) 
+                    
+                    for _, player in pairs(Players:GetPlayers()) do
+                        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                            local role = GetPlayerRole(player)
+                            if BringTargetRole == "ทั้งหมด" or role == BringTargetRole then
+                                player.Character.HumanoidRootPart.CFrame = bringOffset
+                            end
+                        end
+                    end
+                end
+            end)
+            
+            WindUI:Notify({
+                Title = "N.O.N Hub | Success",
+                Content = "โหลดสคริปต์เสร็จสิ้น! ขอให้สนุกครับ",
+                Duration = 5
+            })
+
+        elseif data.status == "expired" then
+            ConfirmBtn.Text = "คีย์หมดอายุแล้ว (เกิน 1 วัน)!"
+            ConfirmBtn.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
+            task.wait(2)
+            ConfirmBtn.Text = "ยืนยัน"
+            ConfirmBtn.BackgroundColor3 = Color3.fromRGB(180, 0, 0)
+        else
+            ConfirmBtn.Text = "คีย์ไม่ถูกต้องหรือไม่มีในระบบ!"
+            ConfirmBtn.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
+            task.wait(2)
+            ConfirmBtn.Text = "ยืนยัน"
+            ConfirmBtn.BackgroundColor3 = Color3.fromRGB(180, 0, 0)
+        end
+    else
+        ConfirmBtn.Text = "เชื่อมต่อเว็บเซิร์ฟเวอร์ไม่สำเร็จ!"
+        ConfirmBtn.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
+        task.wait(2)
+        ConfirmBtn.Text = "ยืนยัน"
+        ConfirmBtn.BackgroundColor3 = Color3.fromRGB(180, 0, 0)
+    end
+end)
